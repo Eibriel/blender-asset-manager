@@ -164,7 +164,7 @@ class bam_config:
 
     @staticmethod
     def create_bamignore_filter(id_=".bamignore", cwd=None):
-        path = bam_config.find_rootdir()
+        path = bam_config.find_rootdir(cwd=cwd)
         bamignore = os.path.join(path, id_)
         if os.path.isfile(bamignore):
             with open(bamignore, 'r', encoding='utf-8') as f:
@@ -230,8 +230,8 @@ class bam_session:
         return path_cache
 
     @staticmethod
-    def request_url(req_path):
-        cfg = bam_config.load()
+    def request_url(req_path, cwd=None):
+        cfg = bam_config.load(cwd=cwd)
         result = "%s/%s" % (cfg['url'], req_path)
         return result
 
@@ -284,7 +284,7 @@ class bam_session:
                     if filename_check is None or filename_check(filepath):
                         yield filepath
 
-        bamignore_filter = bam_config.create_bamignore_filter()
+        bamignore_filter = bam_config.create_bamignore_filter(cwd=session_rootdir)
 
         for f_abs in iter_files(session_rootdir, bamignore_filter):
             if f_abs not in paths_used:
@@ -508,7 +508,9 @@ class bam_commands:
         # constants
         CHUNK_SIZE = 1024
 
-        cfg = bam_config.load(abort=True)
+        cfg = bam_config.load(cwd=session_rootdir_partial, abort=True)
+
+        project_rootdir = bam_config.find_rootdir(cwd=session_rootdir_partial, abort=True)
 
         if output_dir is None:
             # fallback to the basename
@@ -541,7 +543,7 @@ class bam_commands:
         #
         import requests
         r = requests.get(
-                bam_session.request_url("file"),
+                bam_session.request_url("file", cwd=session_rootdir_partial),
                 params=payload,
                 auth=(cfg['user'], cfg['password']),
                 stream=True,
@@ -926,7 +928,7 @@ class bam_commands:
         import requests
 
         # Load project configuration
-        cfg = bam_config.load(abort=True)
+        cfg = bam_config.load(cwd=paths[0], abort=True)
 
         session_rootdir = bam_config.find_sessiondir(paths[0], abort=True)
 
@@ -1112,7 +1114,7 @@ class bam_commands:
 
         with files["file"]:
             r = requests.put(
-                    bam_session.request_url("file"),
+                    bam_session.request_url("file", cwd = paths[0]),
                     params=payload,
                     auth=(cfg["user"], cfg["password"]),
                     files=files)
@@ -1237,11 +1239,11 @@ class bam_commands:
             print(json.dumps(ret))
 
     @staticmethod
-    def list_dir(paths, use_full=False, use_json=False):
+    def list_dir(paths, cwd=None, use_full=False, use_json=False):
         import requests
 
         # Load project configuration
-        cfg = bam_config.load(abort=True)
+        cfg = bam_config.load(cwd=cwd, abort=True)
 
         # TODO(cam) multiple paths
         path = paths[0]
@@ -1251,7 +1253,7 @@ class bam_commands:
             "path": path,
             }
         r = requests.get(
-                bam_session.request_url("file_list"),
+                bam_session.request_url("file_list", cwd = cwd),
                 params=payload,
                 auth=(cfg['user'], cfg['password']),
                 stream=True,
@@ -1621,7 +1623,7 @@ def create_argparse_checkout(subparsers):
 
     subparse.set_defaults(
             func=lambda args:
-            bam_commands.checkout(args.path, args.output, args.all_deps),
+            bam_commands.checkout(args.path, args.output, None, args.all_deps),
             )
 
 
