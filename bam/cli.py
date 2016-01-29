@@ -260,6 +260,9 @@ class bam_session:
 
         for f_rel, sha1 in paths_uuid.items():
             f_abs = os.path.join(session_rootdir, f_rel)
+            # XXX hack for windows
+            if os.name == 'nt':
+                f_abs = f_abs.replace("/", "\\")
             if os.path.exists(f_abs):
                 sha1_modified = uuid_from_file(f_abs)
                 if sha1_modified != sha1:
@@ -340,6 +343,9 @@ class bam_session:
             # we could do later, but the file is fresh in cache, so do now
             from bam.utils.system import uuid_from_file
             f_rel = os.path.relpath(blendfile_abs, session_rootdir)
+            # XXX quick hack for windows
+            if os.name == 'nt':
+                f_rel = f_rel.replace("\\", "/")
             paths_uuid_update[f_rel] = uuid_from_file(blendfile_abs)
             del uuid_from_file
 
@@ -376,6 +382,9 @@ class bam_session:
                     # get the absolute path as it is in the main repo
                     # then remap back to our local checkout
                     blendfile_abs_remote = os.path.normpath(os.path.join(paths_remap_relbase, blendfile.decode('utf-8')))
+                    # XXX quick hack for Windows
+                    if os.name == 'nt':
+                        blendfile_abs_remote = blendfile_abs_remote.replace('\\', '/')
                     blendfile_abs = os.path.join(session_rootdir, paths_remap_reverse[blendfile_abs_remote])
 
                     bam_session.binary_edits_apply_single(
