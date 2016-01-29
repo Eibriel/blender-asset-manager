@@ -133,6 +133,18 @@ PROJECT_NAME = "test_project"
 # running scripts next to this one!
 CURRENT_DIR = os.path.dirname(__file__)
 
+def blendfile_open (blend_file):
+    blender = os.getenv('BLENDER_BIN', "blender")
+    cmd = (
+        blender,
+        "--background",
+        "--factory-startup",
+        "-noaudio",
+        blend_file,
+        "--"
+        )
+    stdout, stderr, returncode = run(cmd)
+    return stdout, stderr, returncode
 
 def args_as_string(args):
     """
@@ -1642,6 +1654,40 @@ class BamRelativeAbsoluteTest(BamSessionTestCase):
         pattern = re.compile("D:|M:")
         changes = pattern.search(stdout) != None
         self.assertEqual(False, changes)
+
+        shutil.rmtree(session_path)
+
+    def test_absolute_relative_from_blendfiles_incomplete(self):
+        """
+        After packing and unpacking auto_generico_01.blend
+        openning the file should not return error "Incomplete file"
+        """
+
+        session_name = "mysession"
+        proj_path, session_path = self.init_session(session_name)
+
+        blendfile = os.path.join("root", "level1", "level2", "level3", "level3.blend")
+
+        import shutil
+        shutil.copytree(
+                os.path.join(CURRENT_DIR, "blends", "multi_level_incomplete"),
+                os.path.join(session_path, "root"),
+                )
+
+        stdout, stderr = bam_run(["commit", "-m", "multi_level_incomplete"], session_path)
+        self.assertEqual("", stderr)
+
+        shutil.rmtree(session_path)
+
+        stdout, stderr = bam_run(["checkout", blendfile, "--output", session_path], proj_path)
+        self.assertEqual("", stderr)
+
+        # open file to check if it's ok
+        import re
+        stdout, stderr, returncode = blendfile_open (os.path.join(session_path, "level3.blend"))
+        pattern = re.compile(b", incomplete")
+        able_to_open = pattern.search(stdout) == None
+        self.assertEqual(True, able_to_open)
 
         shutil.rmtree(session_path)
 
